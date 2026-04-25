@@ -654,12 +654,9 @@ async def chart_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
 
-    elif action.startswith("rwy|"):
-        rwy_parts = action.split("|")
-        if len(rwy_parts) < 4:
-            return
-        rwy = rwy_parts[2]
-        rwy_pair = rwy_parts[3]
+    elif action == "rwy":
+        rwy = parts[2]
+        rwy_pair = parts[3]
 
         runway_data = None
         for rw in runways:
