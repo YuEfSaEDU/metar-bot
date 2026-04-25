@@ -86,7 +86,7 @@ def run_bot():
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     logger.info("METAR Bot calisiyor...")
-    bot_app.run_polling(drop_pending_updates=True)
+    bot_app.run_polling(drop_pending_updates=True, stop_signals=[])
 
 
 def start_bot_thread():
