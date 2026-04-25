@@ -14,11 +14,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-API_BASE_URL = "https://planner.flightsimulator.com/api/v1/weather/metar/"
-API_COOKIE = os.getenv(
-    "API_COOKIE",
-    "ApiToken=wcXZWnXviydjpu9z8GBf7w%3D%3D.9wydkP%2FTKZiGh7FmoQzWy8nYvlSevxXwY%2FQAs5LDcPUBbjy1euVZ%2FzJ9R5QbXE8T0AanA5i4yZZ2krQdAhLiIH6dPA%3D%3D",
-)
+METAR_API = "https://aviationweather.gov/api/data/metar"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -313,17 +309,20 @@ def parse_weather(wx_str: str) -> str | None:
     return label
 
 
-def parse_metar(raw: str) -> str:
+def parse_metar(raw: str, api_name: str = "") -> str:
     parts = raw.strip().split()
     lines = []
     i = 0
 
     icao = parts[i]; i += 1
     city, airport_name = get_airport_info(icao)
-    if airport_name:
-        lines.append(f"<b>Havalimani:</b> <code>{icao}</code> - {escape(airport_name)}, {escape(city)}")
+    if api_name:
+        display_name = api_name
+    elif airport_name:
+        display_name = f"{airport_name}, {city}"
     else:
-        lines.append(f"<b>Havalimani:</b> <code>{icao}</code> - {escape(city)}")
+        display_name = city
+    lines.append(f"<b>Havalimani:</b> <code>{icao}</code> - {escape(display_name)}")
 
     if i < len(parts):
         time_str = parts[i]; i += 1
@@ -472,11 +471,17 @@ def calc_relative_humidity(temp: int, dew: int) -> int:
 
 
 def fetch_metar(icao: str) -> dict | None:
-    headers = {'Cookie': API_COOKIE}
     try:
-        resp = requests.get(f"{API_BASE_URL}{icao}", headers=headers, timeout=10)
+        resp = requests.get(
+            METAR_API,
+            params={"ids": icao, "format": "json", "taf": "false"},
+            timeout=10,
+        )
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        if data and len(data) > 0:
+            return data[0]
+        return None
     except requests.RequestException as e:
         logger.error(f"API error for {icao}: {e}")
         return None
@@ -509,10 +514,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action("typing")
 
     result = fetch_metar(text)
-    if result and result.get("data"):
-        metar_data = result["data"]
-        airport = result.get("airportIcao", text)
-        decoded = parse_metar(metar_data)
+    if result and result.get("rawOb"):
+        metar_data = result["rawOb"]
+        airport = result.get("icaoId", text)
+        airport_name = result.get("name", "")
+        decoded = parse_metar(metar_data, airport_name)
         message = (
             f"\U0001f4e1 <b>{airport} METAR Raporu</b>\n"
             "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
