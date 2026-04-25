@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 ICAO_PATTERN = re.compile(r'^[A-Z]{4}$')
 
-flask_app = Flask(__name__)
+app = Flask(__name__)
+
+_bot_started = False
 
 
 def fetch_metar(icao: str) -> dict | None:
@@ -78,31 +80,27 @@ def run_bot():
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN bulunamadi!")
         return
-
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
+    bot_app.add_handler(CommandHandler("start", start))
+    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     logger.info("METAR Bot calisiyor...")
-    app.run_polling(drop_pending_updates=True)
+    bot_app.run_polling(drop_pending_updates=True)
 
 
-@flask_app.route("/")
+def start_bot_thread():
+    global _bot_started
+    if _bot_started:
+        return
+    _bot_started = True
+    t = threading.Thread(target=run_bot, daemon=True)
+    t.start()
+
+
+@app.route("/")
 def health():
     return jsonify({"status": "ok", "bot": "metar-bot"})
 
 
-@flask_app.route("/health")
+@app.route("/health")
 def health_check():
     return jsonify({"status": "healthy"})
-
-
-def main():
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-
-    port = int(os.getenv("PORT", 10000))
-    flask_app.run(host="0.0.0.0", port=port)
-
-
-if __name__ == "__main__":
-    main()
