@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import threading
+import asyncio
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify
@@ -80,6 +81,7 @@ def run_bot():
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN bulunamadi!")
         return
+    asyncio.set_event_loop(asyncio.new_event_loop())
     bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
