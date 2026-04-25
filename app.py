@@ -106,3 +106,6 @@ def health():
 @app.route("/health")
 def health_check():
     return jsonify({"status": "healthy"})
+
+
+start_bot_thread()
