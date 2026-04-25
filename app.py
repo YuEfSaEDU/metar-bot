@@ -4,6 +4,7 @@ import logging
 import threading
 import asyncio
 from datetime import datetime, timezone
+from html import escape
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify
@@ -53,7 +54,7 @@ WEATHER_CODES = {
 
 CLOUD_TYPES = {
     'FEW': 'Seyrek', 'SCT': 'Parcali', 'BKN': 'Kirik', 'OVC': 'Kapali',
-    'SKC': 'Açik gökyüzü', 'CLR': 'Açik gökyüzü', 'NSC': 'Onemsiz bulut',
+    'SKC': 'Acik gokyuzu', 'CLR': 'Acik gokyuzu', 'NSC': 'Onemsiz bulut',
 }
 
 INTENSITY_PREFIX = {'-': 'Hafif', '+': 'Kuvvetli', 'VC': 'Yakin'}
@@ -78,7 +79,7 @@ def parse_metar(raw: str) -> str:
     i = 0
 
     icao = parts[i]; i += 1
-    lines.append(f"__Havalimani:__ *{icao}*")
+    lines.append(f"<b>Havalimani:</b> <code>{icao}</code>")
 
     if i < len(parts):
         time_str = parts[i]; i += 1
@@ -95,29 +96,29 @@ def parse_metar(raw: str) -> str:
                     month = 12; year -= 1
                 else:
                     month -= 1
-            auto = " _(Otomatik)_" if indicator == 'A' else ""
-            lines.append(f"__Gozlem Zamani:__ {day:02d}/{month:02d}/{year} {hour:02d}:{minute:02d} UTC{auto}")
+            auto = " (Otomatik)" if indicator == 'A' else ""
+            lines.append(f"<b>Gozlem Zamani:</b> {day:02d}/{month:02d}/{year} {hour:02d}:{minute:02d} UTC{auto}")
         except (ValueError, IndexError):
-            lines.append(f"__Gozlem Zamani:__ {time_str}")
+            lines.append(f"<b>Gozlem Zamani:</b> {escape(time_str)}")
 
     if i < len(parts) and parts[i] == 'AUTO':
-        lines.append("__Turu:__ Otomatik istasyon")
+        lines.append("<b>Turu:</b> Otomatik istasyon")
         i += 1
 
     if i < len(parts) and parts[i] == 'COR':
-        lines.append("__Turu:__ Duzeltilmis rapor")
+        lines.append("<b>Turu:</b> Duzeltilmis rapor")
         i += 1
 
     if i < len(parts):
         wind = parts[i]; i += 1
         if wind == '00000KT':
-            lines.append("__Ruzgar:__ Ruzgarsiz")
+            lines.append("<b>Ruzgar:</b> Ruzgarsiz")
         elif 'VRB' in wind:
             m = re.match(r'VRB(\d+)G?(\d+)?(KT|MPS|KMH)', wind)
             if m:
-                gust = f"G{m.group(2)}" if m.group(2) else ""
+                gust = f", hamle {m.group(2)}" if m.group(2) else ""
                 unit = 'kt' if m.group(3) == 'KT' else 'm/s' if m.group(3) == 'MPS' else 'km/s'
-                lines.append(f"__Ruzgar:__ Degisen yon, {m.group(1)}{gust} {unit}")
+                lines.append(f"<b>Ruzgar:</b> Degisen yon, {m.group(1)}{gust} {unit}")
         else:
             m = re.match(r'(\d{3})(\d{2,3})G?(\d+)?(KT|MPS|KMH)', wind)
             if m:
@@ -127,21 +128,56 @@ def parse_metar(raw: str) -> str:
                 unit = 'kt' if m.group(4) == 'KT' else 'm/s' if m.group(4) == 'MPS' else 'km/s'
                 dir_label = wind_direction_label(direction)
                 gust_str = f", hamle {gust} {unit}" if gust else ""
-                lines.append(f"__Ruzgar:__ {dir_label} ({direction}°) {speed} {unit}{gust_str}")
+                lines.append(f"<b>Ruzgar:</b> {dir_label} ({direction}\u00b0) {speed} {unit}{gust_str}")
+
+    if i < len(parts) and 'V' in parts[i] and parts[i] != 'VRB':
+        var_part = parts[i]; i += 1
+        m = re.match(r'(\d{3})V(\d{3})', var_part)
+        if m:
+            from_dir = wind_direction_label(m.group(1))
+            to_dir = wind_direction_label(m.group(2))
+            lines.append(f"<b>Ruzgar Yon Degisimi:</b> {m.group(1)}\u00b0 ({from_dir}) - {m.group(2)}\u00b0 ({to_dir}) arasi")
 
     if i < len(parts):
         vis = parts[i]; i += 1
-        if vis.isdigit() or (vis.startswith('-') and vis[1:].isdigit()):
+        if vis == 'CAVOK':
+            lines.append("<b>Gorunurluk:</b> 10+ km (CAVOK)")
+        elif vis == '9999':
+            lines.append("<b>Gorunurluk:</b> 10+ km")
+        elif vis.isdigit() or (vis.startswith('-') and vis[1:].isdigit()):
             vis_val = int(vis.replace('-', ''))
-            if vis_val >= 9999:
-                lines.append(f"__Gorunurluk:__ 10+ km")
-            else:
-                lines.append(f"__Gorunurluk:__ {vis_val} m")
+            lines.append(f"<b>Gorunurluk:</b> {vis_val} m")
         elif 'SM' in vis:
-            lines.append(f"__Gorunurluk:__ {vis}")
-        elif '/' in vis and 'SM' in parts[i] if i < len(parts) else False:
-            lines.append(f"__Gorunurluk:__ {vis} {parts[i]}")
-            i += 1
+            lines.append(f"<b>Gorunurluk:</b> {escape(vis)}")
+
+    if i < len(parts) and parts[i] == 'CAVOK':
+        lines.append("<b>Bulutlar:</b> Onemsiz (CAVOK)")
+        i += 1
+    else:
+        cloud_lines = []
+        while i < len(parts):
+            p = parts[i]
+            m = re.match(r'^(FEW|SCT|BKN|OVC|SKC|CLR|NSC|VV)(\d{3})(CB|TCU)?$', p)
+            if m:
+                ctype = m.group(1)
+                height = int(m.group(2)) * 100
+                feet = f"{height:,} ft"
+                m_to = f" (~{int(height * 0.3048):,} m)"
+                type_tr = CLOUD_TYPES.get(ctype, ctype)
+                if ctype == 'VV':
+                    cloud_lines.append(f"Dikey gorus mesafesi: {feet}{m_to}")
+                else:
+                    extra = ""
+                    if m.group(3) == 'CB':
+                        extra = " (Cb)"
+                    elif m.group(3) == 'TCU':
+                        extra = " (TCU)"
+                    cloud_lines.append(f"{type_tr} {feet}{m_to}{extra}")
+                i += 1
+            else:
+                break
+        if cloud_lines:
+            lines.append(f"<b>Bulutlar:</b> {', '.join(cloud_lines)}")
 
     weather_items = []
     while i < len(parts):
@@ -155,7 +191,6 @@ def parse_metar(raw: str) -> str:
             elif p.startswith('VC'):
                 prefix = INTENSITY_PREFIX.get('VC', '')
                 weather = p[2:]
-
             label = WEATHER_CODES.get(weather, weather)
             if prefix:
                 label = f"{prefix} {label}"
@@ -163,35 +198,8 @@ def parse_metar(raw: str) -> str:
             i += 1
         else:
             break
-
     if weather_items:
-        lines.append(f"__Hava Durumu:__ {', '.join(weather_items)}")
-
-    cloud_lines = []
-    while i < len(parts):
-        p = parts[i]
-        m = re.match(r'^(FEW|SCT|BKN|OVC|SKC|CLR|NSC|VV)(\d{3})(?:CB|TCU)?$', p)
-        if m:
-            ctype = m.group(1)
-            height = int(m.group(2)) * 100
-            feet = f"{height:,} ft"
-            m_to = f" (~{int(height * 0.3048):,} m)"
-            type_tr = CLOUD_TYPES.get(ctype, ctype)
-            if ctype == 'VV':
-                cloud_lines.append(f"Dikey gorus mesafesi: {feet}{m_to}")
-            else:
-                extra = ""
-                if p.endswith('CB'):
-                    extra = " (Cb)"
-                elif p.endswith('TCU'):
-                    extra = " (TCU)"
-                cloud_lines.append(f"{type_tr} {feet}{m_to}{extra}")
-            i += 1
-        else:
-            break
-
-    if cloud_lines:
-        lines.append(f"__Bulutlar:__ {', '.join(cloud_lines)}")
+        lines.append(f"<b>Hava Durumu:</b> {', '.join(weather_items)}")
 
     if i < len(parts):
         temp_part = parts[i]; i += 1
@@ -199,9 +207,9 @@ def parse_metar(raw: str) -> str:
         if m:
             temp = int(m.group(1).replace('M', '-'))
             dew = int(m.group(2).replace('M', '-'))
-            temp_s = f"{temp}°C" if temp >= 0 else f"-{abs(temp)}°C"
-            dew_s = f"{dew}°C" if dew >= 0 else f"-{abs(dew)}°C"
-            lines.append(f"__Sicaklik:__ {temp_s}  |  __Cig Noktasi:__ {dew_s}")
+            temp_s = f"{temp}\u00b0C" if temp >= 0 else f"-{abs(temp)}\u00b0C"
+            dew_s = f"{dew}\u00b0C" if dew >= 0 else f"-{abs(dew)}\u00b0C"
+            lines.append(f"<b>Sicaklik:</b> {temp_s}  |  <b>Cig Noktasi:</b> {dew_s}")
 
     if i < len(parts):
         qnh_part = parts[i]; i += 1
@@ -209,30 +217,28 @@ def parse_metar(raw: str) -> str:
         if m:
             qnh = int(m.group(1))
             inhg = qnh * 0.02953
-            lines.append(f"__QNH:__ {qnh} hPa ({inhg:.2f} inHg)")
+            lines.append(f"<b>QNH:</b> {qnh} hPa ({inhg:.2f} inHg)")
 
-    if i < len(parts):
-        rewx = parts[i]
-        if rewx.startswith('RE'):
-            i += 1
+    if i < len(parts) and parts[i].startswith('RE'):
+        i += 1
 
     while i < len(parts):
         p = parts[i]
         if p == 'NOSIG':
-            lines.append("__Onemli Degisiklik:__ Beklenmiyor (NOSIG)")
+            lines.append("<b>Onemli Degisiklik:</b> Beklenmiyor (NOSIG)")
             i += 1
-        elif p == 'TEMPO' or p == 'BECMG' or p == 'FM' or p == 'PROB':
+        elif p in ('TEMPO', 'BECMG', 'FM', 'PROB'):
             trend_parts = [p]
             i += 1
             while i < len(parts) and not parts[i].startswith('RMK') and parts[i] not in ('TEMPO', 'BECMG', 'FM', 'PROB'):
                 trend_parts.append(parts[i])
                 i += 1
             trend_label = {'TEMPO': 'Gecici', 'BECMG': 'Donusen', 'FM': 'Buradan', 'PROB': 'Olasilik'}.get(trend_parts[0], trend_parts[0])
-            lines.append(f"__Trend ({trend_label}):__ {' '.join(trend_parts[1:])}")
+            lines.append(f"<b>Trend ({trend_label}):</b> {escape(' '.join(trend_parts[1:]))}")
         elif p == 'RMK':
             remarks = ' '.join(parts[i+1:])
             if remarks.strip():
-                lines.append(f"__Notlar:__ {remarks.strip()}")
+                lines.append(f"<b>Notlar:</b> {escape(remarks.strip())}")
             break
         elif re.match(r'^R\d{2}[LRC]?/\d{4}[V]?\d*$', p):
             i += 1
@@ -255,12 +261,13 @@ def fetch_metar(icao: str) -> dict | None:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "\u2708\ufe0f METAR Bot'a hosgeldiniz!\n\n"
-        "Havalimani ICAO kodunu gonderin (orn: LTAI), guncel METAR bilgisini ileteyim.\n\n"
+        "\u2708\ufe0f <b>METAR Bot'a hosgeldiniz!</b>\n\n"
+        "Havalimani ICAO kodunu gonderin (orn: <code>LTAI</code>), guncel METAR bilgisini ileteyim.\n\n"
         "Ornekler:\n"
-        "\u2022 LTAI - Antalya\n"
-        "\u2022 LTBA - Istanbul\n"
-        "\u2022 LTJF - Ankara"
+        "\u2022 <code>LTAI</code> - Antalya\n"
+        "\u2022 <code>LTBA</code> - Istanbul\n"
+        "\u2022 <code>LTJF</code> - Ankara",
+        parse_mode="HTML"
     )
 
 
@@ -269,8 +276,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not ICAO_PATTERN.match(text):
         await update.message.reply_text(
-            "\u26a0\ufe0f Gecersiz ICAO kodu.\n"
-            "Lutfen 4 harfli bir ICAO kodu gonderin (orn: LTAI, LTBA)."
+            "\u26a0\ufe0f <b>Gecersiz ICAO kodu.</b>\n"
+            "Lutfen 4 harfli bir ICAO kodu gonderin (orn: <code>LTAI</code>).",
+            parse_mode="HTML"
         )
         return
 
@@ -282,20 +290,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         airport = result.get("airportIcao", text)
         decoded = parse_metar(metar_data)
         message = (
-            f"\U0001f4e1 *{airport} METAR Raporu*\n"
-            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
-            f"*RAW:*\n`{metar_data}`\n\n"
-            "\U0001f4cb *Detayli Rapor:*\n"
+            f"\U0001f4e1 <b>{airport} METAR Raporu</b>\n"
+            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
+            f"<b>RAW:</b>\n<code>{escape(metar_data)}</code>\n\n"
+            f"\U0001f4cb <b>Detayli Rapor:</b>\n"
             f"{decoded}"
         )
-        await update.message.reply_text(
-            message,
-            parse_mode="Markdown"
-        )
+        await update.message.reply_text(message, parse_mode="HTML")
     else:
         await update.message.reply_text(
-            f"\u274c {text} icin METAR bilgisi alinamadi.\n"
-            "ICAO kodunu kontrol edip tekrar deneyin."
+            f"\u274c <b>{escape(text)}</b> icin METAR bilgisi alinamadi.\n"
+            "ICAO kodunu kontrol edip tekrar deneyin.",
+            parse_mode="HTML"
         )
 
 
