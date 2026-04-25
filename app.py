@@ -8,8 +8,11 @@ from html import escape
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    CallbackQueryHandler, filters, ContextTypes,
+)
 
 load_dotenv()
 
@@ -25,7 +28,6 @@ AIRPORTS = {
     'LTAI': ('Antalya', 'Antalya Havalimani'),
     'LTBA': ('Istanbul', 'Istanbul Ataturk Havalimani'),
     'LTFM': ('Istanbul', 'Istanbul Havalimani'),
-    'LTJF': ('Ankara', 'Ankara Esenboga Havalimani'),
     'LTAC': ('Ankara', 'Ankara Esenboga Havalimani'),
     'LTBJ': ('Izmir', 'Izmir Adnan Menderes Havalimani'),
     'LTBS': ('Dalaman', 'Dalaman Havalimani'),
@@ -41,25 +43,16 @@ AIRPORTS = {
     'LTAU': ('Sanliurfa', 'Sanliurfa GAP Havalimani'),
     'LTAV': ('Adana', 'Adana Sakirpasa Havalimani'),
     'LTAW': ('Samsun', 'Samsun Carsamba Havalimani'),
-    'LTAX': ('Mugla', 'Mugla Dalaman Havalimani'),
     'LTAZ': ('Mersin', 'Mersin (Tarsus) Havalimani'),
-    'LTB1': ('Bursa', 'Bursa Yenisehir Havalimani'),
     'LTBB': ('Bodrum', 'Bodrum Milas Havalimani'),
     'LTBC': ('Canakkale', 'Canakkale Havalimani'),
     'LTBD': ('Bursa', 'Bursa Havalimani'),
     'LTBE': ('Denizli', 'Denizli Cardak Havalimani'),
     'LTBF': ('Eskisehir', 'Eskisehir Hasan Polatkan Havalimani'),
     'LTBG': ('Tekirdag', 'Tekirdag Corlu Havalimani'),
-    'LTBH': ('Balikesir', 'Balikesir Merkez Havalimani'),
-    'LTBI': ('Bilecik', 'Bilecik Havalimani'),
-    'LTBJ': ('Izmir', 'Izmir Adnan Menderes Havalimani'),
-    'LTBK': ('Izmir', 'Izmir Selcuk (Efes) Havalimani'),
     'LTBL': ('Isparta', 'Isparta Suleyman Demirel Havalimani'),
     'LTBM': ('Mardin', 'Mardin Havalimani'),
-    'LTBN': ('Kastamonu', 'Kastamonu Havalimani'),
     'LTBO': ('Kutahya', 'Kutahya Zafer Havalimani'),
-    'LTBP': ('Sinop', 'Sinop Havalimani'),
-    'LTBR': ('Yalova', 'Yalova Havalimani'),
     'LTBY': ('Nevsehir', 'Nevsehir Kapadokya Havalimani'),
     'LTCA': ('Trabzon', 'Trabzon Havalimani'),
     'LTCB': ('Erzincan', 'Erzincan Havalimani'),
@@ -69,123 +62,143 @@ AIRPORTS = {
     'LTCF': ('Kahramanmaras', 'Kahramanmaras Havalimani'),
     'LTCG': ('Rize', 'Rize Artvin Havalimani'),
     'LTCH': ('Hakkari', 'Hakkari Yuksekova Havalimani'),
-    'LTCI': ('Gumushane', 'Gumushane Havalimani'),
-    'LTCN': ('Giresun', 'Giresun Ordu Havalimani'),
     'LTCP': ('Batman', 'Batman Havalimani'),
     'LTCR': ('Igdir', 'Igdir Havalimani'),
     'LTCS': ('Sirnak', 'Sirnak Serafettin Elci Havalimani'),
-    'LTCT': ('Sirnak', 'Sirnak Havalimani'),
     'LTCU': ('Agri', 'Agri Ahmed-i Hani Havalimani'),
-    'LTCV': ('Tunceli', 'Tunceli Havalimani'),
-    'LTCW': ('Ardahan', 'Ardahan Havalimani'),
     'LTDA': ('Hatay', 'Hatay Havalimani'),
-    'LTDB': ('Adiyaman', 'Adiyaman Havalimani'),
-    'LTDC': ('Kilis', 'Kilis Havalimani'),
-    'LTDD': ('Osmaniye', 'Osmaniye Havalimani'),
-    'LTDE': ('Yozgat', 'Yozgat Havalimani'),
-    'LTDF': ('Kirsehir', 'Kirsehir Havalimani'),
-    'LTDH': ('Nigde', 'Nigde Havalimani'),
     'LTFC': ('Istanbul', 'Istanbul Sabiha Gokcen Havalimani'),
     'LTFJ': ('Istanbul', 'Istanbul Sabiha Gokcen Havalimani'),
-    'LTFE': ('Izmir', 'Izmir Selcuk Havalimani'),
     'LTAH': ('Konya', 'Konya Havalimani'),
-    'LTAG': ('Sivas', 'Sivas Nuri Demirag Havalimani'),
-    'LTAD': ('Ankara', 'Ankara Etimesgut Havalimani'),
     'LTNG': ('Ordu-Giresun', 'Ordu-Giresun Havalimani'),
-    'LTCF': ('Kahramanmaras', 'Kahramanmaras Havalimani'),
+    'LCEN': ('Lefkosa', 'Ercan Havalimani'),
+    'LCLK': ('Larnaka', 'Larnaka Havalimani'),
+    'LGAV': ('Atina', 'Atina Eleftherios Venizelos'),
     'LFPG': ('Paris', 'Paris Charles de Gaulle'),
     'EGLL': ('Londra', 'Londra Heathrow'),
     'EDDF': ('Frankfurt', 'Frankfurt Havalimani'),
     'KJFK': ('New York', 'New York JFK'),
     'KLAX': ('Los Angeles', 'Los Angeles Intl'),
-    'KBOS': ('Boston', 'Boston Logan Intl'),
-    'KORD': ('Chicago', "Chicago O'Hare"),
     'KSFO': ('San Francisco', 'San Francisco Intl'),
-    'KATL': ('Atlanta', 'Atlanta Hartsfield-Jackson'),
-    'KDFW': ('Dallas', 'Dallas/Fort Worth'),
-    'KDEN': ('Denver', 'Denver Intl'),
-    'KSEA': ('Seattle', 'Seattle-Tacoma Intl'),
-    'KMIA': ('Miami', 'Miami Intl'),
-    'KLAS': ('Las Vegas', 'Las Vegas McCarran'),
-    'KPHX': ('Phoenix', 'Phoenix Sky Harbor'),
-    'KIAH': ('Houston', 'Houston George Bush'),
-    'KCLT': ('Charlotte', 'Charlotte Douglas'),
-    'KDTW': ('Detroit', 'Detroit Metropolitan'),
-    'KMEM': ('Memphis', 'Memphis Intl'),
-    'K MSP': ('Minneapolis', 'Minneapolis-St Paul'),
     'EDDB': ('Berlin', 'Berlin Brandenburg'),
     'EDDM': ('Munchen', 'Munchen Havalimani'),
-    'EDDH': ('Hamburg', 'Hamburg Havalimani'),
-    'EDDF': ('Frankfurt', 'Frankfurt Havalimani'),
     'LEMD': ('Madrid', 'Madrid Barajas'),
     'LIRF': ('Roma', 'Roma Fiumicino'),
-    'LIRN': ('Napoli', 'Napoli Havalimani'),
     'LIMC': ('Milano', 'Milano Malpensa'),
-    'LIPE': ('Bologna', 'Bologna Havalimani'),
-    'LIPZ': ('Venedik', 'Venedik Marco Polo'),
-    'LPPT': ('Lizbon', 'Lizbon Humberto Delgado'),
     'EHAM': ('Amsterdam', 'Amsterdam Schiphol'),
-    'EBBR': ('Brussel', 'Brussel Havalimani'),
     'LSZH': ('Zurich', 'Zurich Havalimani'),
-    'LSGG': ('Cenevre', 'Cenevre Havalimani'),
-    'LOWW': ('Viyana', 'Viyana Schwechat'),
     'LOWW': ('Viyana', 'Viyana Havalimani'),
-    'EPWA': ('Varsova', 'Varsova Chopin'),
-    'LKPR': ('Prag', 'Prag Vaclav Havel'),
-    'LHBP': ('Budapeste', 'Budapeste Ferenc'),
-    'SKBO': ('Bogota', 'Bogota El Dorado'),
-    'SAEZ': ('Buenos Aires', 'Buenos Aires Ezeiza'),
-    'SBGL': ('Rio de Janeiro', 'Rio de Janeiro Galeao'),
-    'SBGR': ('Sao Paulo', 'Sao Paulo Guarulhos'),
-    'YSSY': ('Sidney', 'Sidney Kingsford Smith'),
-    'YMML': ('Melbourne', 'Melbourne Tullamarine'),
-    'NZAA': ('Auckland', 'Auckland Havalimani'),
-    'RJTT': ('Tokyo', 'Tokyo Haneda'),
-    'RJBB': ('Osaka', 'Osaka Kansai'),
     'RKSI': ('Seul', 'Seul Incheon'),
     'VHHH': ('Hong Kong', 'Hong Kong Intl'),
-    'WSSS': ('Singapur', 'Singapur Changi'),
-    'VTBS': ('Bangkok', 'Bangkok Suvarnabhumi'),
-    'VIDP': ('Delhi', 'Delhi Indira Gandhi'),
-    'VABB': ('Mumbai', 'Mumbai Chhatrapati'),
+    'RJTT': ('Tokyo', 'Tokyo Haneda'),
     'OMDB': ('Dubai', 'Dubai Intl'),
     'OTHH': ('Doha', 'Doha Hamad Intl'),
-    'OJAI': ('Amman', 'Amman Queen Alia'),
-    'LLBG': ('Tel Aviv', 'Tel Aviv Ben Gurion'),
     'HECA': ('Kahire', 'Kahire Intl'),
+    'VTBS': ('Bangkok', 'Bangkok Suvarnabhumi'),
+    'VIDP': ('Delhi', 'Delhi Indira Gandhi'),
     'FACT': ('Cape Town', 'Cape Town Intl'),
-    'FAOR': ('Johannesburg', 'Johannesburg OR Tambo'),
-    'DNMM': ('Lagos', 'Lagos Murtala Muhammed'),
-    'DAAG': ('Cezayir', 'Cezayir Houari Boumediene'),
-    'GMMN': ('Marakes', 'Marakes Menara'),
-    'DTMB': ('Monastir', 'Monastir Habib Bourguiba'),
-    'DAAG': ('Cezayir', 'Cezayir Havalimani'),
-    'LTCK': ('Kibris', 'Ercan Havalimani'),
-    'LCEN': ('Lefkosa', 'Ercan Havalimani'),
-    'LCLK': ('Larnaka', 'Larnaka Havalimani'),
-    'LCPH': ('Baf', 'Baf Havalimani'),
-    'LGAV': ('Atina', 'Atina Eleftherios Venizelos'),
-    'LGIR': ('Girit', 'Girit Havalimani'),
-    'LTZP': ('Fethiye', 'Fethiye Havalimani'),
-    'LTKA': ('Kastellorizo', 'Kastellorizo Havalimani'),
-    'LTDM': ('Konya', 'Konya Havalimani'),
-    'LTDT': ('Aydin', 'Aydin Havalimani'),
-    'LTDK': ('Usak', 'Usak Havalimani'),
-    'LTDR': ('Bolu', 'Bolu Havalimani'),
-    'LTDS': ('Bilecik', 'Bilecik Havalimani'),
-    'LTDU': ('Corum', 'Corum Havalimani'),
-    'LTDV': ('Tokat', 'Tokat Havalimani'),
-    'LTDW': ('Amasya', 'Amasya Havalimani'),
-    'LUBD': ('Banja Luka', 'Banja Luka Havalimani'),
-    'LYBE': ('Belgrad', 'Belgrad Nikola Tesla'),
-    'LZKZ': ('Kosova', 'Pristina Havalimani'),
-    'LWSK': ('Skopje', 'Skopje Havalimani'),
-    'LATI': ('Tirana', 'Tirana Havalimani'),
-    'LBSF': ('Sofya', 'Sofya Havalimani'),
-    'LBWN': ('Varna', 'Varna Havalimani'),
-    'LBBG': ('Burgaz', 'Burgaz Havalimani'),
-    'LRBS': ('Bukres', 'Bukres Henri Coanda'),
-    'LHSM': ('Saraybosna', 'Saraybosna Havalimani'),
+}
+
+RUNWAYS = {
+    'LTAI': [
+        {'id': '18C/36C', 'len': 3400, 'ils': True, 'note': 'CAT II/III'},
+        {'id': '18L/36R', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+        {'id': '18R/36L', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTFM': [
+        {'id': '17L/35R', 'len': 4100, 'ils': True, 'note': 'CAT III'},
+        {'id': '17R/35L', 'len': 4100, 'ils': True, 'note': 'CAT III'},
+        {'id': '16L/34R', 'len': 3060, 'ils': True, 'note': 'CAT I'},
+        {'id': '16R/34L', 'len': 3060, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTBA': [
+        {'id': '05/23', 'len': 3300, 'ils': True, 'note': 'CAT III'},
+        {'id': '35L/17R', 'len': 3000, 'ils': True, 'note': 'CAT III'},
+        {'id': '35R/17L', 'len': 2600, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAC': [
+        {'id': '03L/21R', 'len': 3750, 'ils': True, 'note': 'CAT II'},
+        {'id': '03R/21L', 'len': 3750, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTBJ': [
+        {'id': '16L/34R', 'len': 3240, 'ils': True, 'note': 'CAT I'},
+        {'id': '16R/34L', 'len': 2425, 'ils': False, 'note': ''},
+    ],
+    'LTBB': [
+        {'id': '10/28', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTBS': [
+        {'id': '19/01', 'len': 2835, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAV': [
+        {'id': '05/23', 'len': 2750, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTCA': [
+        {'id': '11/29', 'len': 3040, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTCD': [
+        {'id': '17/35', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTFC': [
+        {'id': '06/24', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAP': [
+        {'id': '10/28', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAQ': [
+        {'id': '13/31', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAR': [
+        {'id': '18/36', 'len': 3175, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTCG': [
+        {'id': '13/31', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTBE': [
+        {'id': '19/01', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTAM': [
+        {'id': '07/25', 'len': 3000, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LTDA': [
+        {'id': '04/22', 'len': 2750, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LCEN': [
+        {'id': '10/28', 'len': 2745, 'ils': True, 'note': 'CAT I'},
+    ],
+    'LFPG': [
+        {'id': '08L/26R', 'len': 4215, 'ils': True, 'note': 'CAT III'},
+        {'id': '08R/26L', 'len': 2700, 'ils': True, 'note': 'CAT III'},
+        {'id': '09L/27R', 'len': 4200, 'ils': True, 'note': 'CAT III'},
+        {'id': '09R/27L', 'len': 2700, 'ils': True, 'note': 'CAT III'},
+    ],
+    'EGLL': [
+        {'id': '09L/27R', 'len': 3901, 'ils': True, 'note': 'CAT III'},
+        {'id': '09R/27L', 'len': 3658, 'ils': True, 'note': 'CAT III'},
+    ],
+    'KJFK': [
+        {'id': '04L/22R', 'len': 3682, 'ils': True, 'note': 'CAT III'},
+        {'id': '04R/22L', 'len': 2560, 'ils': True, 'note': 'CAT I'},
+        {'id': '13L/31R', 'len': 3048, 'ils': True, 'note': 'CAT III'},
+        {'id': '13R/31L', 'len': 4423, 'ils': True, 'note': 'CAT I'},
+    ],
+    'EDDF': [
+        {'id': '07L/25R', 'len': 4000, 'ils': True, 'note': 'CAT III'},
+        {'id': '07C/25C', 'len': 4000, 'ils': True, 'note': 'CAT III'},
+        {'id': '07R/25L', 'len': 2800, 'ils': True, 'note': 'CAT I'},
+    ],
+    'OMDB': [
+        {'id': '12L/30R', 'len': 4000, 'ils': True, 'note': 'CAT III'},
+        {'id': '12R/30L', 'len': 4000, 'ils': True, 'note': 'CAT III'},
+    ],
+}
+
+CHART_CATEGORIES = {
+    'approach': '\U0001f6ec Yaklasim (Approach)',
+    'sid': '\U0001f6eb Kalkis (SID)',
+    'star': '\u2b07 Varis (STAR)',
+    'airport': '\U0001f3db Havalimani Diagrami',
+    'all': '\U0001f4cb Tum Chartlar',
 }
 
 app = Flask(__name__)
@@ -492,10 +505,11 @@ def fetch_metar(icao: str) -> dict | None:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "\u2708\ufe0f <b>METAR Bot'a hosgeldiniz!</b>\n\n"
-        "Havalimani ICAO kodunu gonderin (orn: <code>LTAI</code>), guncel METAR bilgisini ileteyim.\n\n"
-        "Ornekler:\n"
+        "<b>Komutlar:</b>\n"
+        "\u2022 ICAO kodu gonderin \u2192 METAR raporu\n"
+        "\u2022 <code>/chart LTAI</code> \u2192 Chart &amp; pist bilgileri\n\n"
+        "<b>Ornekler:</b>\n"
         "\u2022 <code>LTAI</code> - Antalya\n"
-        "\u2022 <code>LTBA</code> - Istanbul\n"
         "\u2022 <code>LTFM</code> - Istanbul\n"
         "\u2022 <code>LTBJ</code> - Izmir",
         parse_mode="HTML"
@@ -537,6 +551,179 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def chart_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args or len(context.args) == 0:
+        await update.message.reply_text(
+            "\u26a0\ufe0f Kullanim: <code>/chart LTAI</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    icao = context.args[0].strip().upper()
+    if not ICAO_PATTERN.match(icao):
+        await update.message.reply_text(
+            "\u26a0\ufe0f Gecersiz ICAO kodu.\n"
+            "Kullanim: <code>/chart LTAI</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    await update.message.chat.send_action("typing")
+
+    airport_info = get_airport_info(icao)
+    runways = RUNWAYS.get(icao, [])
+    chartfox_url = f"https://chartfox.org/{icao}"
+
+    info_text = f"\U0001f4cd <b>{icao} - {escape(airport_info[0])}</b>\n"
+    if airport_info[1]:
+        info_text += f"{escape(airport_info[1])}\n"
+
+    if runways:
+        info_text += f"\n<b>Pistler:</b> {len(runways)} adet\n"
+        for rw in runways:
+            ils_mark = "ILS \u2705" if rw['ils'] else "ILS \u274c"
+            note = f" ({rw['note']})" if rw['note'] else ""
+            info_text += f"  \u2022 <b>{rw['id']}</b> - {rw['len']}m | {ils_mark}{note}\n"
+
+    keyboard = []
+
+    if runways:
+        keyboard.append([InlineKeyboardButton("\U0001f6ec Yaklasim Chartlari", callback_data=f"approach|{icao}")])
+        keyboard.append([InlineKeyboardButton("\U0001f6eb SID Chartlari", callback_data=f"sid|{icao}")])
+        keyboard.append([InlineKeyboardButton("\u2b07 STAR Chartlari", callback_data=f"star|{icao}")])
+        keyboard.append([InlineKeyboardButton("\U0001f3db Havalimani Diagrami", callback_data=f"apt|{icao}")])
+
+    keyboard.append([InlineKeyboardButton("\U0001f4cb ChartFox - Tum Chartlar", url=chartfox_url)])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(info_text, parse_mode="HTML", reply_markup=reply_markup)
+
+
+async def chart_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    parts = data.split("|")
+    if len(parts) != 2:
+        return
+
+    action = parts[0]
+    icao = parts[1]
+
+    runways = RUNWAYS.get(icao, [])
+    chartfox_url = f"https://chartfox.org/{icao}"
+
+    if action == "approach":
+        if not runways:
+            await query.edit_message_text(
+                f"\u274c {icao} icin pist bilgisi bulunamadi.\n"
+                f"ChartFox'tan kontrol edin: {chartfox_url}",
+                parse_mode="HTML"
+            )
+            return
+
+        keyboard = []
+        for rw in runways:
+            rwy_ids = rw['id'].split('/')
+            for rwy in rwy_ids:
+                keyboard.append([InlineKeyboardButton(
+                    f"Pist {rwy} {'(ILS)' if rw['ils'] else ''}",
+                    callback_data=f"rwy|{icao}|{rwy}|{rw['id']}"
+                )])
+
+        keyboard.append([InlineKeyboardButton("\u2b05 Geri", callback_data=f"back|{icao}")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            f"\U0001f6ec <b>{icao} - Yaklasim Pist Secimi</b>\n\n"
+            "Yaklasim yapacaginiz pisti secin:",
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
+
+    elif action in ("sid", "star", "apt"):
+        label = CHART_CATEGORIES.get(action, action)
+        await query.edit_message_text(
+            f"{label}\n\n"
+            f"<b>{icao}</b> icin chartlara ulasmak icin asagidaki linki tiklayin:",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("\U0001f4cb ChartFox'ta Ac", url=chartfox_url)],
+                [InlineKeyboardButton("\u2b05 Geri", callback_data=f"back|{icao}")],
+            ])
+        )
+
+    elif action.startswith("rwy|"):
+        rwy_parts = action.split("|")
+        if len(rwy_parts) < 4:
+            return
+        rwy = rwy_parts[2]
+        rwy_pair = rwy_parts[3]
+
+        runway_data = None
+        for rw in runways:
+            if rw['id'] == rwy_pair:
+                runway_data = rw
+                break
+
+        text = f"\U0001f6ec <b>{icao} - Pist {rwy} Yaklasim</b>\n"
+        if runway_data:
+            text += f"\n<b>Pist:</b> {runway_data['id']} ({runway_data['len']}m)\n"
+            if runway_data['ils']:
+                text += f"<b>ILS:</b> Mevcut {runway_data['note']}\n\n"
+                text += "<b>Yaklasim Turleri:</b>\n"
+                text += f"  \u2022 ILS {runway_data['note']} RWY {rwy}\n"
+                text += f"  \u2022 RNAV (GNSS) RWY {rwy}\n"
+                text += f"  \u2022 VOR RWY {rwy}\n"
+                if rwy_pair.endswith('L') or rwy_pair.endswith('R') or rwy_pair.endswith('C'):
+                    text += f"  \u2022 LOC RWY {rwy}\n"
+            else:
+                text += f"<b>ILS:</b> Mevcut degil\n\n"
+                text += "<b>Yaklasim Turleri:</b>\n"
+                text += f"  \u2022 RNAV (GNSS) RWY {rwy}\n"
+                text += f"  \u2022 VOR RWY {rwy}\n"
+                text += f"  \u2022 Visual RWY {rwy}\n"
+
+        text += f"\n<b>Chart icin:</b>"
+
+        keyboard = [
+            [InlineKeyboardButton("\U0001f4cb ChartFox'ta Ac", url=chartfox_url)],
+            [InlineKeyboardButton("\u2b05 Geri", callback_data=f"approach|{icao}")],
+        ]
+        await query.edit_message_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif action == "back":
+        airport_info = get_airport_info(icao)
+        runways = RUNWAYS.get(icao, [])
+
+        info_text = f"\U0001f4cd <b>{icao} - {escape(airport_info[0])}</b>\n"
+        if airport_info[1]:
+            info_text += f"{escape(airport_info[1])}\n"
+
+        if runways:
+            info_text += f"\n<b>Pistler:</b> {len(runways)} adet\n"
+            for rw in runways:
+                ils_mark = "ILS \u2705" if rw['ils'] else "ILS \u274c"
+                note = f" ({rw['note']})" if rw['note'] else ""
+                info_text += f"  \u2022 <b>{rw['id']}</b> - {rw['len']}m | {ils_mark}{note}\n"
+
+        keyboard = []
+        if runways:
+            keyboard.append([InlineKeyboardButton("\U0001f6ec Yaklasim Chartlari", callback_data=f"approach|{icao}")])
+            keyboard.append([InlineKeyboardButton("\U0001f6eb SID Chartlari", callback_data=f"sid|{icao}")])
+            keyboard.append([InlineKeyboardButton("\u2b07 STAR Chartlari", callback_data=f"star|{icao}")])
+            keyboard.append([InlineKeyboardButton("\U0001f3db Havalimani Diagrami", callback_data=f"apt|{icao}")])
+        keyboard.append([InlineKeyboardButton("\U0001f4cb ChartFox - Tum Chartlar", url=chartfox_url)])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(info_text, parse_mode="HTML", reply_markup=reply_markup)
+
+
 def run_bot():
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN bulunamadi!")
@@ -544,6 +731,8 @@ def run_bot():
     asyncio.set_event_loop(asyncio.new_event_loop())
     bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
+    bot_app.add_handler(CommandHandler("chart", chart_command))
+    bot_app.add_handler(CallbackQueryHandler(chart_callback))
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     logger.info("METAR Bot calisiyor...")
     bot_app.run_polling(drop_pending_updates=True, stop_signals=[])
