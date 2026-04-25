@@ -25,6 +25,173 @@ logger = logging.getLogger(__name__)
 
 ICAO_PATTERN = re.compile(r'^[A-Z]{4}$')
 
+AIRPORTS = {
+    'LTAI': ('Antalya', 'Antalya Havalimani'),
+    'LTBA': ('Istanbul', 'Istanbul Ataturk Havalimani'),
+    'LTFM': ('Istanbul', 'Istanbul Havalimani'),
+    'LTJF': ('Ankara', 'Ankara Esenboga Havalimani'),
+    'LTAC': ('Ankara', 'Ankara Esenboga Havalimani'),
+    'LTBJ': ('Izmir', 'Izmir Adnan Menderes Havalimani'),
+    'LTBS': ('Dalaman', 'Dalaman Havalimani'),
+    'LTAF': ('Izmir', 'Izmir Cigli Havalimani'),
+    'LTAL': ('Kars', 'Kars Harakani Havalimani'),
+    'LTAM': ('Kayseri', 'Kayseri Erkilet Havalimani'),
+    'LTAN': ('Malatya', 'Malatya Erhac Havalimani'),
+    'LTAP': ('Gaziantep', 'Gaziantep Oguzeli Havalimani'),
+    'LTAQ': ('Erzurum', 'Erzurum Havalimani'),
+    'LTAR': ('Van', 'Van Ferit Melen Havalimani'),
+    'LTAS': ('Sivas', 'Sivas Nuri Demirag Havalimani'),
+    'LTAT': ('Elazig', 'Elazig Havalimani'),
+    'LTAU': ('Sanliurfa', 'Sanliurfa GAP Havalimani'),
+    'LTAV': ('Adana', 'Adana Sakirpasa Havalimani'),
+    'LTAW': ('Samsun', 'Samsun Carsamba Havalimani'),
+    'LTAX': ('Mugla', 'Mugla Dalaman Havalimani'),
+    'LTAZ': ('Mersin', 'Mersin (Tarsus) Havalimani'),
+    'LTB1': ('Bursa', 'Bursa Yenisehir Havalimani'),
+    'LTBB': ('Bodrum', 'Bodrum Milas Havalimani'),
+    'LTBC': ('Canakkale', 'Canakkale Havalimani'),
+    'LTBD': ('Bursa', 'Bursa Havalimani'),
+    'LTBE': ('Denizli', 'Denizli Cardak Havalimani'),
+    'LTBF': ('Eskisehir', 'Eskisehir Hasan Polatkan Havalimani'),
+    'LTBG': ('Tekirdag', 'Tekirdag Corlu Havalimani'),
+    'LTBH': ('Balikesir', 'Balikesir Merkez Havalimani'),
+    'LTBI': ('Bilecik', 'Bilecik Havalimani'),
+    'LTBJ': ('Izmir', 'Izmir Adnan Menderes Havalimani'),
+    'LTBK': ('Izmir', 'Izmir Selcuk (Efes) Havalimani'),
+    'LTBL': ('Isparta', 'Isparta Suleyman Demirel Havalimani'),
+    'LTBM': ('Mardin', 'Mardin Havalimani'),
+    'LTBN': ('Kastamonu', 'Kastamonu Havalimani'),
+    'LTBO': ('Kutahya', 'Kutahya Zafer Havalimani'),
+    'LTBP': ('Sinop', 'Sinop Havalimani'),
+    'LTBR': ('Yalova', 'Yalova Havalimani'),
+    'LTBY': ('Nevsehir', 'Nevsehir Kapadokya Havalimani'),
+    'LTCA': ('Trabzon', 'Trabzon Havalimani'),
+    'LTCB': ('Erzincan', 'Erzincan Havalimani'),
+    'LTCC': ('Bingol', 'Bingol Havalimani'),
+    'LTCD': ('Diyarbakir', 'Diyarbakir Havalimani'),
+    'LTCE': ('Mus', 'Mus Havalimani'),
+    'LTCF': ('Kahramanmaras', 'Kahramanmaras Havalimani'),
+    'LTCG': ('Rize', 'Rize Artvin Havalimani'),
+    'LTCH': ('Hakkari', 'Hakkari Yuksekova Havalimani'),
+    'LTCI': ('Gumushane', 'Gumushane Havalimani'),
+    'LTCN': ('Giresun', 'Giresun Ordu Havalimani'),
+    'LTCP': ('Batman', 'Batman Havalimani'),
+    'LTCR': ('Igdir', 'Igdir Havalimani'),
+    'LTCS': ('Sirnak', 'Sirnak Serafettin Elci Havalimani'),
+    'LTCT': ('Sirnak', 'Sirnak Havalimani'),
+    'LTCU': ('Agri', 'Agri Ahmed-i Hani Havalimani'),
+    'LTCV': ('Tunceli', 'Tunceli Havalimani'),
+    'LTCW': ('Ardahan', 'Ardahan Havalimani'),
+    'LTDA': ('Hatay', 'Hatay Havalimani'),
+    'LTDB': ('Adiyaman', 'Adiyaman Havalimani'),
+    'LTDC': ('Kilis', 'Kilis Havalimani'),
+    'LTDD': ('Osmaniye', 'Osmaniye Havalimani'),
+    'LTDE': ('Yozgat', 'Yozgat Havalimani'),
+    'LTDF': ('Kirsehir', 'Kirsehir Havalimani'),
+    'LTDH': ('Nigde', 'Nigde Havalimani'),
+    'LTFC': ('Istanbul', 'Istanbul Sabiha Gokcen Havalimani'),
+    'LTFJ': ('Istanbul', 'Istanbul Sabiha Gokcen Havalimani'),
+    'LTFE': ('Izmir', 'Izmir Selcuk Havalimani'),
+    'LTAH': ('Konya', 'Konya Havalimani'),
+    'LTAG': ('Sivas', 'Sivas Nuri Demirag Havalimani'),
+    'LTAD': ('Ankara', 'Ankara Etimesgut Havalimani'),
+    'LTNG': ('Ordu-Giresun', 'Ordu-Giresun Havalimani'),
+    'LTCF': ('Kahramanmaras', 'Kahramanmaras Havalimani'),
+    'LFPG': ('Paris', 'Paris Charles de Gaulle'),
+    'EGLL': ('Londra', 'Londra Heathrow'),
+    'EDDF': ('Frankfurt', 'Frankfurt Havalimani'),
+    'KJFK': ('New York', 'New York JFK'),
+    'KLAX': ('Los Angeles', 'Los Angeles Intl'),
+    'KBOS': ('Boston', 'Boston Logan Intl'),
+    'KORD': ('Chicago', "Chicago O'Hare"),
+    'KSFO': ('San Francisco', 'San Francisco Intl'),
+    'KATL': ('Atlanta', 'Atlanta Hartsfield-Jackson'),
+    'KDFW': ('Dallas', 'Dallas/Fort Worth'),
+    'KDEN': ('Denver', 'Denver Intl'),
+    'KSEA': ('Seattle', 'Seattle-Tacoma Intl'),
+    'KMIA': ('Miami', 'Miami Intl'),
+    'KLAS': ('Las Vegas', 'Las Vegas McCarran'),
+    'KPHX': ('Phoenix', 'Phoenix Sky Harbor'),
+    'KIAH': ('Houston', 'Houston George Bush'),
+    'KCLT': ('Charlotte', 'Charlotte Douglas'),
+    'KDTW': ('Detroit', 'Detroit Metropolitan'),
+    'KMEM': ('Memphis', 'Memphis Intl'),
+    'K MSP': ('Minneapolis', 'Minneapolis-St Paul'),
+    'EDDB': ('Berlin', 'Berlin Brandenburg'),
+    'EDDM': ('Munchen', 'Munchen Havalimani'),
+    'EDDH': ('Hamburg', 'Hamburg Havalimani'),
+    'EDDF': ('Frankfurt', 'Frankfurt Havalimani'),
+    'LEMD': ('Madrid', 'Madrid Barajas'),
+    'LIRF': ('Roma', 'Roma Fiumicino'),
+    'LIRN': ('Napoli', 'Napoli Havalimani'),
+    'LIMC': ('Milano', 'Milano Malpensa'),
+    'LIPE': ('Bologna', 'Bologna Havalimani'),
+    'LIPZ': ('Venedik', 'Venedik Marco Polo'),
+    'LPPT': ('Lizbon', 'Lizbon Humberto Delgado'),
+    'EHAM': ('Amsterdam', 'Amsterdam Schiphol'),
+    'EBBR': ('Brussel', 'Brussel Havalimani'),
+    'LSZH': ('Zurich', 'Zurich Havalimani'),
+    'LSGG': ('Cenevre', 'Cenevre Havalimani'),
+    'LOWW': ('Viyana', 'Viyana Schwechat'),
+    'LOWW': ('Viyana', 'Viyana Havalimani'),
+    'EPWA': ('Varsova', 'Varsova Chopin'),
+    'LKPR': ('Prag', 'Prag Vaclav Havel'),
+    'LHBP': ('Budapeste', 'Budapeste Ferenc'),
+    'SKBO': ('Bogota', 'Bogota El Dorado'),
+    'SAEZ': ('Buenos Aires', 'Buenos Aires Ezeiza'),
+    'SBGL': ('Rio de Janeiro', 'Rio de Janeiro Galeao'),
+    'SBGR': ('Sao Paulo', 'Sao Paulo Guarulhos'),
+    'YSSY': ('Sidney', 'Sidney Kingsford Smith'),
+    'YMML': ('Melbourne', 'Melbourne Tullamarine'),
+    'NZAA': ('Auckland', 'Auckland Havalimani'),
+    'RJTT': ('Tokyo', 'Tokyo Haneda'),
+    'RJBB': ('Osaka', 'Osaka Kansai'),
+    'RKSI': ('Seul', 'Seul Incheon'),
+    'VHHH': ('Hong Kong', 'Hong Kong Intl'),
+    'WSSS': ('Singapur', 'Singapur Changi'),
+    'VTBS': ('Bangkok', 'Bangkok Suvarnabhumi'),
+    'VIDP': ('Delhi', 'Delhi Indira Gandhi'),
+    'VABB': ('Mumbai', 'Mumbai Chhatrapati'),
+    'OMDB': ('Dubai', 'Dubai Intl'),
+    'OTHH': ('Doha', 'Doha Hamad Intl'),
+    'OJAI': ('Amman', 'Amman Queen Alia'),
+    'LLBG': ('Tel Aviv', 'Tel Aviv Ben Gurion'),
+    'HECA': ('Kahire', 'Kahire Intl'),
+    'FACT': ('Cape Town', 'Cape Town Intl'),
+    'FAOR': ('Johannesburg', 'Johannesburg OR Tambo'),
+    'DNMM': ('Lagos', 'Lagos Murtala Muhammed'),
+    'DAAG': ('Cezayir', 'Cezayir Houari Boumediene'),
+    'GMMN': ('Marakes', 'Marakes Menara'),
+    'DTMB': ('Monastir', 'Monastir Habib Bourguiba'),
+    'DAAG': ('Cezayir', 'Cezayir Havalimani'),
+    'LTCK': ('Kibris', 'Ercan Havalimani'),
+    'LCEN': ('Lefkosa', 'Ercan Havalimani'),
+    'LCLK': ('Larnaka', 'Larnaka Havalimani'),
+    'LCPH': ('Baf', 'Baf Havalimani'),
+    'LGAV': ('Atina', 'Atina Eleftherios Venizelos'),
+    'LGIR': ('Girit', 'Girit Havalimani'),
+    'LTZP': ('Fethiye', 'Fethiye Havalimani'),
+    'LTKA': ('Kastellorizo', 'Kastellorizo Havalimani'),
+    'LTDM': ('Konya', 'Konya Havalimani'),
+    'LTDT': ('Aydin', 'Aydin Havalimani'),
+    'LTDK': ('Usak', 'Usak Havalimani'),
+    'LTDR': ('Bolu', 'Bolu Havalimani'),
+    'LTDS': ('Bilecik', 'Bilecik Havalimani'),
+    'LTDU': ('Corum', 'Corum Havalimani'),
+    'LTDV': ('Tokat', 'Tokat Havalimani'),
+    'LTDW': ('Amasya', 'Amasya Havalimani'),
+    'LUBD': ('Banja Luka', 'Banja Luka Havalimani'),
+    'LYBE': ('Belgrad', 'Belgrad Nikola Tesla'),
+    'LZKZ': ('Kosova', 'Pristina Havalimani'),
+    'LWSK': ('Skopje', 'Skopje Havalimani'),
+    'LATI': ('Tirana', 'Tirana Havalimani'),
+    'LBSF': ('Sofya', 'Sofya Havalimani'),
+    'LBWN': ('Varna', 'Varna Havalimani'),
+    'LBBG': ('Burgaz', 'Burgaz Havalimani'),
+    'LRBS': ('Bukres', 'Bukres Henri Coanda'),
+    'LHSM': ('Saraybosna', 'Saraybosna Havalimani'),
+}
+
 app = Flask(__name__)
 
 _bot_started = False
@@ -59,6 +226,25 @@ CLOUD_TYPES = {
 
 INTENSITY_PREFIX = {'-': 'Hafif', '+': 'Kuvvetli', 'VC': 'Yakin'}
 
+WEATHER_RE = re.compile(
+    r'^[+-]?(?:VC)?(?:BR|DU|DZ|DS|FC|FG|FU|GR|GS|HZ|IC|PL|PO|PY|RA|SA|SG|SN|SQ|SS|TS|UP|VA'
+    r'|TSRA|TSGR|TSGS|FZRA|FZDZ|SHRA|SHSN|SHGR|SHGS|BLDU|BLSA|BLSN|DRDU|DRSA|DRSN'
+    r'|BCFG|MIFG|PRFG|SHPE)$'
+)
+CLOUD_RE = re.compile(r'^(FEW|SCT|BKN|OVC|SKC|CLR|NSC|VV)(\d{3})(CB|TCU)?$')
+WIND_RE = re.compile(r'(\d{3}|VRB)(\d{2,3})G?(\d+)?(KT|MPS|KMH)')
+WIND_VAR_RE = re.compile(r'^(\d{3})V(\d{3})$')
+TEMP_RE = re.compile(r'^(M?\d{2})/(M?\d{2})$')
+QNH_RE = re.compile(r'^Q(\d{4})$')
+RUNWAY_VR_RE = re.compile(r'^R\d{2}[LRC]?/\d{4}[V]?\d*$')
+
+
+def get_airport_info(icao: str) -> tuple[str, str]:
+    info = AIRPORTS.get(icao)
+    if info:
+        return info
+    return (icao, '')
+
 
 def wind_direction_label(deg: str) -> str:
     if deg == 'VRB':
@@ -73,13 +259,71 @@ def wind_direction_label(deg: str) -> str:
         return deg
 
 
+def parse_wind(wind_str: str) -> str:
+    if wind_str == '00000KT':
+        return "<b>Ruzgar:</b> Ruzgarsiz"
+    m = WIND_RE.match(wind_str)
+    if not m:
+        return f"<b>Ruzgar:</b> {escape(wind_str)}"
+    direction = m.group(1)
+    speed = m.group(2)
+    gust = m.group(3)
+    unit_raw = m.group(4)
+    unit = 'kt' if unit_raw == 'KT' else 'm/s' if unit_raw == 'MPS' else 'km/s'
+    gust_str = f", hamle {gust} {unit}" if gust else ""
+    if direction == 'VRB':
+        return f"<b>Ruzgar:</b> Degisen yon, {speed}{gust_str} {unit}"
+    dir_label = wind_direction_label(direction)
+    return f"<b>Ruzgar:</b> {dir_label} ({direction}\u00b0) {speed} {unit}{gust_str}"
+
+
+def parse_cloud(cloud_str: str) -> str | None:
+    m = CLOUD_RE.match(cloud_str)
+    if not m:
+        return None
+    ctype = m.group(1)
+    height = int(m.group(2)) * 100
+    feet = f"{height:,} ft"
+    m_to = f" (~{int(height * 0.3048):,} m)"
+    type_tr = CLOUD_TYPES.get(ctype, ctype)
+    if ctype == 'VV':
+        return f"Dikey gorus: {feet}{m_to}"
+    extra = ""
+    if m.group(3) == 'CB':
+        extra = " (Cb)"
+    elif m.group(3) == 'TCU':
+        extra = " (TCU)"
+    return f"{type_tr} {feet}{m_to}{extra}"
+
+
+def parse_weather(wx_str: str) -> str | None:
+    if not WEATHER_RE.match(wx_str):
+        return None
+    prefix = ''
+    weather = wx_str
+    if wx_str[0] in '+-':
+        prefix = INTENSITY_PREFIX.get(wx_str[0], '')
+        weather = wx_str[1:]
+    elif wx_str.startswith('VC'):
+        prefix = INTENSITY_PREFIX.get('VC', '')
+        weather = wx_str[2:]
+    label = WEATHER_CODES.get(weather, weather)
+    if prefix:
+        label = f"{prefix} {label}"
+    return label
+
+
 def parse_metar(raw: str) -> str:
     parts = raw.strip().split()
     lines = []
     i = 0
 
     icao = parts[i]; i += 1
-    lines.append(f"<b>Havalimani:</b> <code>{icao}</code>")
+    city, airport_name = get_airport_info(icao)
+    if airport_name:
+        lines.append(f"<b>Havalimani:</b> <code>{icao}</code> - {escape(airport_name)}, {escape(city)}")
+    else:
+        lines.append(f"<b>Havalimani:</b> <code>{icao}</code> - {escape(city)}")
 
     if i < len(parts):
         time_str = parts[i]; i += 1
@@ -109,118 +353,86 @@ def parse_metar(raw: str) -> str:
         lines.append("<b>Turu:</b> Duzeltilmis rapor")
         i += 1
 
-    if i < len(parts):
-        wind = parts[i]; i += 1
-        if wind == '00000KT':
-            lines.append("<b>Ruzgar:</b> Ruzgarsiz")
-        elif 'VRB' in wind:
-            m = re.match(r'VRB(\d+)G?(\d+)?(KT|MPS|KMH)', wind)
-            if m:
-                gust = f", hamle {m.group(2)}" if m.group(2) else ""
-                unit = 'kt' if m.group(3) == 'KT' else 'm/s' if m.group(3) == 'MPS' else 'km/s'
-                lines.append(f"<b>Ruzgar:</b> Degisen yon, {m.group(1)}{gust} {unit}")
-        else:
-            m = re.match(r'(\d{3})(\d{2,3})G?(\d+)?(KT|MPS|KMH)', wind)
-            if m:
-                direction = m.group(1)
-                speed = m.group(2)
-                gust = m.group(3)
-                unit = 'kt' if m.group(4) == 'KT' else 'm/s' if m.group(4) == 'MPS' else 'km/s'
-                dir_label = wind_direction_label(direction)
-                gust_str = f", hamle {gust} {unit}" if gust else ""
-                lines.append(f"<b>Ruzgar:</b> {dir_label} ({direction}\u00b0) {speed} {unit}{gust_str}")
-
-    if i < len(parts) and 'V' in parts[i] and parts[i] != 'VRB':
-        var_part = parts[i]; i += 1
-        m = re.match(r'(\d{3})V(\d{3})', var_part)
-        if m:
-            from_dir = wind_direction_label(m.group(1))
-            to_dir = wind_direction_label(m.group(2))
-            lines.append(f"<b>Ruzgar Yon Degisimi:</b> {m.group(1)}\u00b0 ({from_dir}) - {m.group(2)}\u00b0 ({to_dir}) arasi")
-
-    if i < len(parts):
-        vis = parts[i]; i += 1
-        if vis == 'CAVOK':
-            lines.append("<b>Gorunurluk:</b> 10+ km (CAVOK)")
-        elif vis == '9999':
-            lines.append("<b>Gorunurluk:</b> 10+ km")
-        elif vis.isdigit() or (vis.startswith('-') and vis[1:].isdigit()):
-            vis_val = int(vis.replace('-', ''))
-            lines.append(f"<b>Gorunurluk:</b> {vis_val} m")
-        elif 'SM' in vis:
-            lines.append(f"<b>Gorunurluk:</b> {escape(vis)}")
-
-    if i < len(parts) and parts[i] == 'CAVOK':
-        lines.append("<b>Bulutlar:</b> Onemsiz (CAVOK)")
+    if i < len(parts) and WIND_RE.match(parts[i]):
+        lines.append(parse_wind(parts[i]))
         i += 1
-    else:
-        cloud_lines = []
+
+    if i < len(parts) and WIND_VAR_RE.match(parts[i]):
+        m = WIND_VAR_RE.match(parts[i])
+        from_dir = wind_direction_label(m.group(1))
+        to_dir = wind_direction_label(m.group(2))
+        lines.append(f"<b>Ruzgar Yon Degisimi:</b> {m.group(1)}\u00b0 ({from_dir}) - {m.group(2)}\u00b0 ({to_dir}) arasi")
+        i += 1
+
+    cavok = False
+    if i < len(parts) and parts[i] == 'CAVOK':
+        lines.append("<b>Gorunurluk:</b> 10+ km")
+        lines.append("<b>Bulutlar:</b> Yok (CAVOK)")
+        lines.append("<b>Hava Durumu:</b> Onemli hava olayi yok")
+        cavok = True
+        i += 1
+
+    if not cavok:
+        if i < len(parts):
+            vis = parts[i]
+            if vis == '9999':
+                lines.append("<b>Gorunurluk:</b> 10+ km")
+                i += 1
+            elif vis.isdigit():
+                lines.append(f"<b>Gorunurluk:</b> {int(vis):,} m")
+                i += 1
+            elif '/' in vis and 'SM' in vis:
+                lines.append(f"<b>Gorunurluk:</b> {escape(vis)}")
+                i += 1
+            elif 'SM' in vis:
+                lines.append(f"<b>Gorunurluk:</b> {escape(vis)}")
+                i += 1
+
+        cloud_items = []
         while i < len(parts):
-            p = parts[i]
-            m = re.match(r'^(FEW|SCT|BKN|OVC|SKC|CLR|NSC|VV)(\d{3})(CB|TCU)?$', p)
-            if m:
-                ctype = m.group(1)
-                height = int(m.group(2)) * 100
-                feet = f"{height:,} ft"
-                m_to = f" (~{int(height * 0.3048):,} m)"
-                type_tr = CLOUD_TYPES.get(ctype, ctype)
-                if ctype == 'VV':
-                    cloud_lines.append(f"Dikey gorus mesafesi: {feet}{m_to}")
-                else:
-                    extra = ""
-                    if m.group(3) == 'CB':
-                        extra = " (Cb)"
-                    elif m.group(3) == 'TCU':
-                        extra = " (TCU)"
-                    cloud_lines.append(f"{type_tr} {feet}{m_to}{extra}")
+            c = parse_cloud(parts[i])
+            if c is not None:
+                cloud_items.append(c)
                 i += 1
             else:
                 break
-        if cloud_lines:
-            lines.append(f"<b>Bulutlar:</b> {', '.join(cloud_lines)}")
+        if cloud_items:
+            lines.append(f"<b>Bulutlar:</b> {', '.join(cloud_items)}")
 
-    weather_items = []
-    while i < len(parts):
-        p = parts[i]
-        if re.match(r'^[+-]?(VC)?(?:BR|DU|DZ|DS|FC|FG|FU|GR|GS|HZ|IC|PL|PO|PY|RA|SA|SG|SN|SQ|SS|TS|UP|VA|TSRA|TSGR|TSGS|FZRA|FZDZ|SHRA|SHSN|SHGR|SHGS|BLDU|BLSA|BLSN|DRDU|DRSA|DRSN|BCFG|MIFG|PRFG|SHPE)$', p):
-            prefix = ''
-            weather = p
-            if p[0] in '+-':
-                prefix = INTENSITY_PREFIX.get(p[0], '')
-                weather = p[1:]
-            elif p.startswith('VC'):
-                prefix = INTENSITY_PREFIX.get('VC', '')
-                weather = p[2:]
-            label = WEATHER_CODES.get(weather, weather)
-            if prefix:
-                label = f"{prefix} {label}"
-            weather_items.append(label)
-            i += 1
-        else:
-            break
-    if weather_items:
-        lines.append(f"<b>Hava Durumu:</b> {', '.join(weather_items)}")
+        wx_items = []
+        while i < len(parts):
+            w = parse_weather(parts[i])
+            if w is not None:
+                wx_items.append(w)
+                i += 1
+            else:
+                break
+        if wx_items:
+            lines.append(f"<b>Hava Durumu:</b> {', '.join(wx_items)}")
 
-    if i < len(parts):
-        temp_part = parts[i]; i += 1
-        m = re.match(r'(M?\d{2})/(M?\d{2})', temp_part)
-        if m:
-            temp = int(m.group(1).replace('M', '-'))
-            dew = int(m.group(2).replace('M', '-'))
-            temp_s = f"{temp}\u00b0C" if temp >= 0 else f"-{abs(temp)}\u00b0C"
-            dew_s = f"{dew}\u00b0C" if dew >= 0 else f"-{abs(dew)}\u00b0C"
-            lines.append(f"<b>Sicaklik:</b> {temp_s}  |  <b>Cig Noktasi:</b> {dew_s}")
+    if i < len(parts) and TEMP_RE.match(parts[i]):
+        m = TEMP_RE.match(parts[i])
+        i += 1
+        temp = int(m.group(1).replace('M', '-'))
+        dew = int(m.group(2).replace('M', '-'))
+        temp_s = f"{temp}\u00b0C" if temp >= 0 else f"-{abs(temp)}\u00b0C"
+        dew_s = f"{dew}\u00b0C" if dew >= 0 else f"-{abs(dew)}\u00b0C"
+        rh = calc_relative_humidity(temp, dew)
+        lines.append(f"<b>Sicaklik:</b> {temp_s}  |  <b>Cig Noktasi:</b> {dew_s}  |  <b>Nem:</b> %{rh}")
 
-    if i < len(parts):
-        qnh_part = parts[i]; i += 1
-        m = re.match(r'Q(\d{4})', qnh_part)
-        if m:
-            qnh = int(m.group(1))
-            inhg = qnh * 0.02953
-            lines.append(f"<b>QNH:</b> {qnh} hPa ({inhg:.2f} inHg)")
+    if i < len(parts) and QNH_RE.match(parts[i]):
+        m = QNH_RE.match(parts[i])
+        i += 1
+        qnh = int(m.group(1))
+        inhg = qnh * 0.02953
+        lines.append(f"<b>QNH:</b> {qnh} hPa ({inhg:.2f} inHg)")
 
     if i < len(parts) and parts[i].startswith('RE'):
+        re_weather = parts[i]
         i += 1
+        re_label = parse_weather(re_weather[2:])
+        if re_label:
+            lines.append(f"<b>Son Hava Durumu:</b> {re_label}")
 
     while i < len(parts):
         p = parts[i]
@@ -240,12 +452,23 @@ def parse_metar(raw: str) -> str:
             if remarks.strip():
                 lines.append(f"<b>Notlar:</b> {escape(remarks.strip())}")
             break
-        elif re.match(r'^R\d{2}[LRC]?/\d{4}[V]?\d*$', p):
+        elif RUNWAY_VR_RE.match(p):
             i += 1
         else:
             i += 1
 
     return '\n'.join(lines)
+
+
+def calc_relative_humidity(temp: int, dew: int) -> int:
+    try:
+        if temp < -50 or temp > 60:
+            return 0
+        es = 6.11 * 10.0 ** (7.5 * temp / (237.7 + temp))
+        ed = 6.11 * 10.0 ** (7.5 * dew / (237.7 + dew))
+        return min(100, max(0, int((ed / es) * 100)))
+    except (ZeroDivisionError, OverflowError):
+        return 0
 
 
 def fetch_metar(icao: str) -> dict | None:
@@ -266,7 +489,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Ornekler:\n"
         "\u2022 <code>LTAI</code> - Antalya\n"
         "\u2022 <code>LTBA</code> - Istanbul\n"
-        "\u2022 <code>LTJF</code> - Ankara",
+        "\u2022 <code>LTFM</code> - Istanbul\n"
+        "\u2022 <code>LTBJ</code> - Izmir",
         parse_mode="HTML"
     )
 
