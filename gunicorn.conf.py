@@ -1,3 +1,5 @@
+import os
+
 workers = 1
 bind = "0.0.0.0:" + os.environ.get("PORT", "10000")
 
