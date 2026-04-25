@@ -311,6 +311,8 @@ def parse_weather(wx_str: str) -> str | None:
 
 def parse_metar(raw: str, api_name: str = "") -> str:
     parts = raw.strip().split()
+    if parts and parts[0] in ('METAR', 'SPECI'):
+        parts = parts[1:]
     lines = []
     i = 0
 
