@@ -278,7 +278,7 @@ def parse_wind(wind_str: str) -> str:
     speed = m.group(2)
     gust = m.group(3)
     unit_raw = m.group(4)
-    unit = 'kt' if unit_raw == 'KT' else 'm/s' if unit_raw == 'MPS' else 'km/s'
+    unit = 'kt' if unit_raw == 'KT' else 'm/s' if unit_raw == 'MPS' else 'km/h'
     gust_str = f", hamle {gust} {unit}" if gust else ""
     if direction == 'VRB':
         return f"<b>Ruzgar:</b> Degisen yon, {speed}{gust_str} {unit}"
@@ -605,7 +605,7 @@ async def chart_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
     parts = data.split("|")
-    if len(parts) != 2:
+    if len(parts) < 2:
         return
 
     action = parts[0]
@@ -655,6 +655,8 @@ async def chart_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif action == "rwy":
+        if len(parts) < 4:
+            return
         rwy = parts[2]
         rwy_pair = parts[3]
 
